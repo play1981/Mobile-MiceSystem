@@ -1,50 +1,51 @@
-<!DOCTYPE html>
-<html>
-	<head>
-		<title>Mobile</title>
-		<meta http-equiv="Content-type" content="text/html; charset=utf-8"/>
-		<meta name="viewport" content="width=device-width, initial-scale=1.0">
-		<link href="/favicon.ico" type="image/x-icon" rel="SHORTCUT ICON">
-		
-		<link type="text/css" rel="stylesheet" media="all" href="/css/jquery.mobile.min.css"/>
-		<link type="text/css" rel="stylesheet" media="all" href="/css/index.css"/>
+<?php
+	session_start();
 
-		<script type="text/javascript" src="/js/jquery.js"></script>
-		<script type="text/javascript" src="/js/index.js"></script>
-		<script type="text/javascript" src="/js/jquery.mobile.min.js"></script>
-	</head>
+	// Если пользователь авторизован, открываем ему соответствующую страничку ПО УМОЛЧАНИЮ
+	$url_default = isSet($_SESSION['Auth']['group_id']) ? ($_SESSION['Auth']['group_id'] == 4 ? 'edit' : 'index') : 'index';
 
-	<body>
-		<div id="index" data-role="page" data-dom-cache="false">
-			<div data-role="header">
-				<h1>Личный кабинет</h1>
-			</div>
+	$url = isset($_REQUEST['__url']) && !empty($_REQUEST['__url']) ? $_REQUEST['__url'] : $url_default;
+	$url_array = explode('/', $url);
+	$admin_mode = $url_array[0] == 'admin' ? true : false;
 
-			<div data-role="content">
-				
-				<div data-inline="true">
-					<a href="#about" data-transition="slide" data-role="button">About</a>
-					<a href="/users.php" rel="external" data-transition="slide" data-role="button">Users</a>
-				</div>
+	if ($admin_mode) {
+		define('BASE', dirname(__FILE__));
+		define('dBASE', BASE.'/admin/actions');
+		array_shift($url_array);
+		$url = implode('/', $url_array);
+	}
+	else {
+		define('BASE', dirname(__FILE__));
+		define('dBASE', BASE.'/actions');
+	}
 
-				<p>Как можно было увидеть, в представленном примере отсутствуют элементы управления, осуществляющие возврат на главную страницу. Это не случайно, так как библиотека jQuery Mobile, если не указано явно, автоматически включает этот элемент навигации в заголовок каждой страницы второго уровня. Если же по какой-то причине этого не требуется, то в тег, описывающий верхний колонтитул, необходимо добавить атрибут data-backbtn="false".</p>
+	$index = count($url_array);
 
-			</div>
+	$action = $url;
+	$_URL = array();
 
-		</div>
+	// Ищем php-файл по указанном пути до тех пор, пока не закончится количество элементов url-а
+	while (!file_exists(dBASE.'/'.$action.'/index.php') && !file_exists(dBASE.'/'.$action.'.php') && $index > 1) {
+		$index --;
+		$action = implode('/', array_slice($url_array, 0, $index));
+		$_URL = array_slice($url_array, $index, count($url_array) - $index);
+	}
 
-		<div id="about" data-role="page" data-dom-cache="false">
-			<div data-role="header">
-				<h1>О проекте</h1>
-			</div>
+	// Проверяем, нашли ли мы конечный файл для указанного url
+	$file = file_exists(dBASE.'/'.$action.'/index.php') ? dBASE.'/'.$action.'/index.php' : dBASE.'/'.$action.'.php';
+	if (!file_exists($file)) {
+		$file = dBASE.'/default.php';
+		$action = 'default';
+		$_URL = explode('/', $url);
+	}
 
-			<div data-role="content">
-				<p><a href="/" data-transition="slide" data-role="button">Index</a></p>
-				<p>Одна из особенностей мобильных Web-интерфейсов, редко встречающаяся в оконных приложениях, - это анимированные переходы между страницами. Так как библиотека jQuery Mobile предназначена для создания Web-интерфейсов для мобильных платформ, то в нее уже встроен набор спецэффектов. В листинге 1 имеется строка, содержащая атрибут data-transition, как показано ниже.</p>
-				<p>Текущее время: <b><?=date("d.m.Y H:i:s");?></b></p>
-			</div>
-		</div>
+	include('autoload.php');
 
+//echo $file;
+//exit;
 
-	</body>
-</html>
+	$_SESSION['action'] = $action;
+	$_SESSION['menu_url'] = $action_tmp;
+	$_SESSION['URL'] = $_URL;
+	include($file);
+?>
